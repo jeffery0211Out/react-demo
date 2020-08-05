@@ -1,5 +1,13 @@
 import {isFunction} from './utils';
-import {createDOM,compare} from './react-dom';
+import { createDOM, compare, compareNew} from './react-dom';
+
+function getNodeIndex(ele) {
+    var i = 0;
+    while (ele = ele.previousSibling) {
+        i++;
+    }
+    return i;
+}
 //定义并导出一个变量中updateQueue
 export let updateQueue = {
     updaters:[],//更新器的数组,默认是一个空数组
@@ -107,14 +115,18 @@ class Component{
         //获取老的虚拟DOM
         let oldVdom = this.oldVdom;
         // oldVdom.instance = this
-        console.log("Component -> forceUpdate -> oldVdom", oldVdom)
         //重新render
         let newVdom = this.render();
         //比较的时候还会比较元素本身和它的儿子们
-        
-        let newDOM = compare(oldVdom,newVdom);
-        this.oldVdom = newVdom
-        this.dom = this.oldVdom.dom = newDOM;
+        // let index = Array.prototype.indexOf.call(this.oldVdom.dom.parentNode, this.oldVdom.dom);
+        // console.log("Component -> forceUpdate -> this.oldVdom.dom.parentNode", this.oldVdom.dom.parentNode)
+        // console.log("Component -> forceUpdate -> this.oldVdom.dom", this.oldVdom.dom)
+        let index =getNodeIndex(this.oldVdom.dom)
+        console.log('index--------', index)
+        // let curVdom = compare(this.oldVdom.dom.parentNode, oldVdom, newVdom, index);
+        let curVdom = compareNew(this.oldVdom.dom.parentNode, oldVdom, newVdom, index);
+        this.oldVdom = curVdom
+        // this.dom = this.oldVdom.dom = newDOM;
         
         if(this.componentDidUpdate){
             this.componentDidUpdate(this.props,this.state);

@@ -1,4 +1,5 @@
 import { addEvent } from './event';
+
 /**
  * 把virtualDOM转成真实DOM并且插入到parentDOM里面
  * @param {*} virtualDOM 虚拟DOM React元素 也就是一个JS对象
@@ -15,6 +16,7 @@ function render(virtualDOM, parentDOM) {
  */
 export function createDOM(virtualDOM) { //如果是类组件，vDom上挂载 实例和dom
   console.log("createDOM -> virtualDOM", virtualDOM)
+  if (!virtualDOM && virtualDOM !== 0) return
   if (virtualDOM === undefined) return
   if (typeof virtualDOM === 'string' || typeof virtualDOM === 'number') {
     return document.createTextNode(virtualDOM);
@@ -67,7 +69,7 @@ function updateClassComponent(virtualDOM) {
   classInstance.oldVdom = renderVirtualDOM;
   let dom = createDOM(renderVirtualDOM);
   if (!dom) return
-  virtualDOM.instance = classInstance
+  virtualDOM.classInstance = classInstance
   virtualDOM.renderVirtualDOM = renderVirtualDOM
   virtualDOM.dom = dom
   //在类的实例身上挂一个属性DOM,指向此类实例对应的真实DOM
@@ -115,23 +117,24 @@ function updateProps(dom, props) {
 //    考虑文本，组件，普通标签三种情况
 //    如果是移除组件，记得添加unmount生命周期函数
 //    循环结束，处理剩余的子元素
-function compareChildren(parentDom, oldChildren, newChildren) {
+// 上面思路错误，应该直接循环最长子元素，然后在循环中直接处理
+function compareChildren(parentDOM, oldChildren, newChildren) {
   oldChildren.forEach((oldChild, index) => {
     let newChild = newChildren[index]
     if ((!oldChild && oldChild !== 0) || (!newChild && newChild !== 0)) {// 这种情况应该不用在这里处理的，要保证index对应的虚拟和真实是一致的
       if (!oldChild && oldChild !== 0 && newChild) { // 插入
-        console.log("compareChildren -> 插入")
+        console.log("compareChildren -> 插入", newChild)
         newChild.dom = createDOM(newChild)
         if (!newChild.type) newChild.dom = document.createTextNode(newChild)
-        let insertPositionNode = parentDom.childNodes[index]
+        let insertPositionNode = parentDOM.childNodes[index]
         let countIndx = index
         while (!insertPositionNode && countIndx < oldChildren.length) {
-          insertPositionNode = parentDom.childNodes[++countIndx]
+          insertPositionNode = parentDOM.childNodes[++countIndx]
         }
         if (insertPositionNode) {
-          parentDom.insertBefore(newChild.dom, parentDom.childNodes[index + 1])
+          parentDOM.insertBefore(newChild.dom, parentDOM.childNodes[index + 1])
         } else {
-          parentDom.appendChild(newChild.dom)
+          parentDOM.appendChild(newChild.dom)
         }
         oldChildren[index] = newChild
         return
@@ -143,8 +146,8 @@ function compareChildren(parentDom, oldChildren, newChildren) {
         // console.log("compareChildren -> oldChild", oldChild)
         // console.log("compareChildren -> index", index)
 
-        console.log("compareChildren -> parentDom.childNodes[index]", parentDom.childNodes[index])
-        if (parentDom.childNodes[index]) parentDom.removeChild(parentDom.childNodes[index])
+        console.log("compareChildren -> parentDOM.childNodes[index]", parentDOM.childNodes[index])
+        if (parentDOM.childNodes[index]) parentDOM.removeChild(parentDOM.childNodes[index])
         // const before = oldChildren.filter((c, cIndex) => cIndex < index)
         // const after = oldChildren.filter((c, cIndex) => cIndex > index)
         // oldChildren = [...before, ...after]
@@ -154,12 +157,12 @@ function compareChildren(parentDom, oldChildren, newChildren) {
     }
     if (typeof oldChild.type === 'string') { // 旧节点为普通节点
       if (!newChild.type) {//新节点为文本节点
-        parentDom.replaceChild(document.createTextNode(newChild), oldChild.dom)
+        parentDOM.replaceChild(document.createTextNode(newChild), oldChild.dom)
       }
 
       if (newChild.type && newChild.type !== oldChild.type) { // 新节点和旧节点不一致，且为组件或普通标签
         newChild.dom = createDOM(newChild)
-        parentDom.replaceChild(newChild.dom, oldChild.dom)
+        parentDOM.replaceChild(newChild.dom, oldChild.dom)
       }
 
       if (oldChild.type === newChild.type) {//新旧节点一致，都为普通节点，更新属性，比较子节点
@@ -170,28 +173,28 @@ function compareChildren(parentDom, oldChildren, newChildren) {
 
     if (!oldChild.type) {//旧节点为文本
       if (!newChild.type) {// 都是文本
-        if (newChild !== oldChild) parentDom.childNodes[index].textContent = newChild
+        if (newChild !== oldChild) parentDOM.childNodes[index].textContent = newChild
       } else { // 子节点是组件或者普通标签
         newChild.dom = createDOM(newChild)
-        parentDom.replaceChild(newChild.dom, parentDom.childNodes[index])
+        parentDOM.replaceChild(newChild.dom, parentDOM.childNodes[index])
       }
     }
 
     if (typeof oldChild.type === 'function') {// 旧节点为组件节点
       if (!newChild.type) { // 文本节点
         // 调用生命周期函数
-        oldChild.instance.componentWillUnmount && oldChild.instance.componentWillUnmount()
-        parentDom.replaceChild(document.createTextNode(newChild), parentDom.childNodes[index])
+        oldChild.classInstance.componentWillUnmount && oldChild.classInstance.componentWillUnmount()
+        parentDOM.replaceChild(document.createTextNode(newChild), parentDOM.childNodes[index])
       }
       if (newChild.type && newChild.type !== oldChild.type) { // 新节点和旧节点不一致，且不为普通节点或组件
-        oldChild.instance.componentWillUnmount && oldChild.instance.componentWillUnmount()
+        oldChild.classInstance.componentWillUnmount && oldChild.classInstance.componentWillUnmount()
         newChild.dom = createDOM(newChild)
-        parentDom.replaceChild(newChild.dom, parentDom.childNodes[index])
+        parentDOM.replaceChild(newChild.dom, parentDOM.childNodes[index])
       }
 
       if (oldChild.type === newChild.type) {
-        newChild.instance = oldChild.instance
-        oldChild.instance.$updater.emitUpdate(newChild.props)
+        newChild.classInstance = oldChild.classInstance
+        oldChild.classInstance.$updater.emitUpdate(newChild.props)
       }
     }
 
@@ -204,12 +207,12 @@ function compareChildren(parentDom, oldChildren, newChildren) {
   if (oldLength > newLength) {
     oldChildren.filter((child, index) => index >= newLength).forEach((child, index) => {
       if (!child.type) {
-        parentDom.removeChild(parentDom.childNodes[index])
+        parentDOM.removeChild(parentDOM.childNodes[index])
       } else if (typeof child.type === 'string') {
-        parentDom.removeChild(child.dom)
+        parentDOM.removeChild(child.dom)
       } else if (typeof child.type == 'function') {
-        child.instance.componentWillUnmount && child.instance.componentWillUnmount()
-        parentDom.removeChild(parentDom.childNodes[index])
+        child.classInstance.componentWillUnmount && child.classInstance.componentWillUnmount()
+        parentDOM.removeChild(parentDOM.childNodes[index])
       }
     })
   }
@@ -217,12 +220,12 @@ function compareChildren(parentDom, oldChildren, newChildren) {
   if (oldLength < newLength) {
     newChildren.filter((child, index) => index >= oldLength).forEach((child, index) => {
       if (!child.type) {
-        parentDom.appendChild(document.createTextNode(child))
+        parentDOM.appendChild(document.createTextNode(child))
       } else if (typeof child.type === 'string') {
-        parentDom.appendChild(createDOM(child))
+        parentDOM.appendChild(createDOM(child))
       } else if (typeof child.type == 'function') {
-        child.instance.componentWillMount && child.instance.componentWillMount()
-        parentDom.appendChild(createDOM(child))
+        child.classInstance.componentWillMount && child.classInstance.componentWillMount()
+        parentDOM.appendChild(createDOM(child))
       }
     })
   }
@@ -230,8 +233,135 @@ function compareChildren(parentDom, oldChildren, newChildren) {
   // 插入新数组中过长的
 }
 
-export function compare(oldVDom, newVDom) { //应该是比较两颗虚拟dom树，然后操作实际dom，这里应该是能触发递归操作才行
-  //如果类型一样的,要进行深度对比
+function compareChildrenNew(parentDOM, oldVChildren, newVChildren) {
+  // 比较两个子元素，先判断是否为文本，然后判断加工成数组
+  if (
+    (typeof oldVChildren === 'string' || typeof oldVChildren === 'number') &&
+    (typeof newVChildren === 'string' || typeof newVChildren === 'number')
+  ) {//如果都是文本类型，则直接改文本
+    if (oldVChildren !== newVChildren) {
+      parentDOM.textContent = newVChildren;
+    }
+    return;
+  }
+  let oldChildren = Array.isArray(oldVChildren) ? oldVChildren : [oldVChildren]
+  let newChildren = Array.isArray(newVChildren) ? newVChildren : [newVChildren]
+  let length = Math.max(oldChildren.length, newChildren.length);
+  for (let i = 0; i < length; i++) {
+    let oldChild = oldChildren[i];
+    let newChild = newChildren[i];
+    let index
+    if (oldChild || oldChild === 0 || oldChild === false) index = i
+    compareNew(parentDOM, oldChild, newChild, index);
+  }
+}
+
+export function compareNew(parentDOM, oldChild, newChild, index) {
+  console.log("compareNew -> index", index)
+  console.log("compareNew -> newChild", newChild)
+  console.log("compareNew -> oldChild", oldChild)
+  if ((!oldChild && oldChild !== 0) && (!newChild && newChild !== 0)) {//新老都没有
+    return newChild;
+  } else if (!oldChild && oldChild !== 0 && newChild) { // 插入(没有老节点)
+    let insertDom
+    if (!newChild.type) {
+      insertDom = document.createTextNode(newChild)
+    } else {
+      newChild.dom = insertDom = createDOM(newChild)
+    }
+    let countIndx = index
+    if (countIndx !== undefined) {
+      let insertPositionNode = parentDOM.childNodes[countIndx]
+      while (!insertPositionNode && countIndx < document.body.childNodes.length) {
+        insertPositionNode = parentDOM.childNodes[++countIndx]
+      }
+      if (insertPositionNode) {
+        parentDOM.insertBefore(insertDom, insertPositionNode)
+      } else {
+        parentDOM.appendChild(insertDom)
+      }
+    } else {
+      parentDOM.appendChild(insertDom)
+    }
+    return newChild
+  } else if (oldChild && !newChild && newChild !== 0) { // 删除（没有新节点）
+    console.log(2222222, oldChild)
+    if (parentDOM.childNodes[index]) parentDOM.removeChild(parentDOM.childNodes[index])
+    return null
+  } else { // 两个节点都有
+    if (typeof oldChild.type === 'string') { // 旧节点为普通节点
+      if (!newChild.type) {//新节点为文本节点
+        parentDOM.replaceChild(document.createTextNode(newChild), oldChild.dom)
+        return newChild
+      }
+
+      if (newChild.type && newChild.type !== oldChild.type) { // 新节点和旧节点不一致，且为组件或普通标签
+        newChild.dom = createDOM(newChild)
+        parentDOM.replaceChild(newChild.dom, oldChild.dom)
+        return newChild
+      }
+
+      if (oldChild.type === newChild.type) {//新旧节点一致，都为普通节点，更新属性，比较子节点
+        newChild.dom = oldChild.dom
+        updateProps(oldChild.dom, newChild.props)
+
+        compareChildrenNew(oldChild.dom, oldChild.props.children, newChild.props.children)
+        return newChild
+      }
+    }
+
+    if (!oldChild.type) {//旧节点为文本
+      console.log('wenben_s')
+      console.log("compareNew -> index", index)
+      console.log("compareNew -> newChild", newChild)
+      console.log("compareNew -> oldChild", oldChild)
+      console.log('wenben_e')
+      if (!newChild.type) {// 都是文本
+        if (newChild !== oldChild) parentDOM.childNodes[index].textContent = newChild
+        return newChild
+
+      } else { // 新节点是组件或者普通标签
+        newChild.dom = createDOM(newChild)
+        console.log("compareNew -> parentDOM.childNodes[index]", parentDOM.childNodes[index])
+        if (parentDOM.childNodes[index]){
+          parentDOM.replaceChild(newChild.dom, parentDOM.childNodes[index])
+
+        }else{
+          parentDOM.appendChild(newChild.dom)
+        }
+        return newChild
+
+      }
+    }
+
+    if (typeof oldChild.type === 'function') {// 旧节点为组件节点
+      if (!newChild.type) { // 文本节点
+        // 调用生命周期函数
+        oldChild.classInstance.componentWillUnmount && oldChild.classInstance.componentWillUnmount()
+        parentDOM.replaceChild(document.createTextNode(newChild), parentDOM.childNodes[index])
+      }
+      if (newChild.type && newChild.type !== oldChild.type) { // 新节点和旧节点不一致，且不为普通节点或组件
+        oldChild.classInstance.componentWillUnmount && oldChild.classInstance.componentWillUnmount()
+        newChild.dom = createDOM(newChild)
+        parentDOM.replaceChild(newChild.dom, parentDOM.childNodes[index])
+      }
+
+      if (oldChild.type === newChild.type) {
+        newChild.classInstance = oldChild.classInstance
+        oldChild.classInstance.$updater.emitUpdate(newChild.props)
+      }
+    }
+    return newChild
+
+
+  }
+
+
+}
+
+export function compare(oldVDom, newVDom) {
+  // 比较两个虚拟dom，比较所有的情况。
+  // 如果有子元素，交给其他方法处理或者遍历以后还是调用此方法对比
   if (oldVDom.type === newVDom.type) {
     updateProps(oldVDom.dom, newVDom.props)
     let dom = oldVDom.dom

@@ -34,20 +34,13 @@ class ScrollList extends React.Component {
     console.log('是否展示', !(this.state.count % 2))
     return (
       <div className={"aa" + this.state.count}>
-        {/* 222-----{this.state.count} */}
         <p>1111</p>
         <button onClick={this.handleAdd}>点我{this.state.count}</button>
-        {/* {!!(this.state.count % 2) ? <p>count为奇数啦</p> : <span>我是span</span>}
-        {!!(this.state.count % 2) ? '3333' : <ChildCount count={this.state.count} />}
-        {!!(this.state.count % 2) ? <p>count为奇数啦</p> : <span>我是span</span>}
-        {!!(this.state.count % 2) ? <p>count为奇数啦</p> : <ChildCount count={this.state.count} />}
-        {!!(this.state.count % 2) ? 1234 : <ChildCount count={this.state.count} />} */}
-        {/* <ChildCount count={this.state.count} /> */}
-        {/* {!!(this.state.count % 2) && '3333'} */}
-        {/* {!!(this.state.count % 2) ? undefined : <span>我是span</span>} */}
+      {!!(this.state.count % 2) ? <p>count为奇数啦</p> : <span>我是span</span>}
+        <ChildCount count={this.state.count} />
         <p>1111</p>
-        {!!(this.state.count % 2) ? undefined : <span>我是span2222222</span>}
         <p>1111</p>
+        {!!(this.state.count % 2) ? 123 : <span>我是span2222222</span>}
 
       </div>
     )
